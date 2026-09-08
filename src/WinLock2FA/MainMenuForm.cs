@@ -109,8 +109,13 @@ public class MainMenuForm : Form
         var random = new Random();
         var question = entries[random.Next(entries.Count)];
         Hide();
-        using var lockForm = new LockForm(question);
-        Application.Run(lockForm);
+        using (var lockForm = new LockForm(question))
+        {
+            // ShowDialog(), not Application.Run() - this app already has a
+            // running message loop (this menu's), and WinForms does not
+            // support starting a second one on the same thread.
+            lockForm.ShowDialog();
+        }
         Show();
     }
 }

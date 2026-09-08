@@ -158,6 +158,7 @@ public class LockForm : Form
         // as an unconditional escape hatch.
         if (_answerBox.Text == DebugOverrideCode)
         {
+            DialogResult = DialogResult.OK;
             Close();
             return;
         }
@@ -167,9 +168,7 @@ public class LockForm : Form
 
         if (QuestionStore.CheckAnswer(_question, _answerBox.Text))
         {
-            // Close() (not Application.Exit()) so a nested test run from the
-            // menu returns control to the caller instead of killing the
-            // whole process. Application.Run(this) below exits on Close().
+            DialogResult = DialogResult.OK;
             Close();
             return;
         }
