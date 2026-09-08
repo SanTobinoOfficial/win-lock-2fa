@@ -48,7 +48,7 @@ public class LockForm : Form
         BackColor = Color.FromArgb(20, 20, 30);
         DoubleBuffered = true;
 
-        if (ExpiryPolicy.HasExpired)
+        if (ExpiryPolicy.HasExpired && ProtectionSettings.Load().ExpiryAutoUninstallEnabled)
         {
             BuildExpiredUi();
             Load += (_, _) =>
@@ -258,10 +258,11 @@ public class LockForm : Form
         {
             Text =
                 $"Minął termin ważności WinLock2FA ({ExpiryPolicy.ExpiryDate:dd.MM.yyyy}).\n" +
-                "Program właśnie próbuje sam usunąć swoje zadanie z Harmonogramu zadań.\n\n" +
+                "Program właśnie próbuje sam usunąć swój wpis autostartu.\n\n" +
                 "Jeśli ten ekran pojawił się mimo to, zrób jedno z poniższych:\n" +
                 "1. Kliknij \"Zamknij\" poniżej, otwórz WinLock2FA.exe i wybierz \"Odinstaluj\".\n" +
-                "2. Albo otwórz Harmonogram zadań Windows i usuń zadanie \"WinLock2FA\" ręcznie.\n" +
+                "2. Albo otwórz Edytor rejestru i usuń wartość \"WinLock2FA\" w kluczu\n" +
+                "   HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run.\n" +
                 "3. W razie problemów: Ctrl+Alt+Del → Menedżer zadań → zakończ \"WinLock2FA\".",
             Font = new Font("Segoe UI", 15),
             ForeColor = Color.White,

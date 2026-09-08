@@ -17,11 +17,18 @@ x64 bez instalowania czegokolwiek dodatkowego.
   jest solona i hashowana SHA-256, a cały plik dodatkowo szyfrowany
   Windows DPAPI (`CurrentUser`), więc odczyta go tylko to samo konto
   Windows na tym samym komputerze.
-- **Instalacja (`Install`)** — rejestruje zadanie w Harmonogramie zadań
-  Windows (`schtasks`), które uruchamia `WinLock2FA.exe lock` przy każdym
-  Twoim zalogowaniu. Zadanie działa z Twoimi normalnymi (nie-admin)
-  uprawnieniami — instalacja nie wymaga uruchamiania niczego jako
-  administrator i niczego nie zmienia w ustawieniach systemowych.
+- **Instalacja (`Install`)** — dopisuje wpis autostartu w rejestrze
+  (`HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run`),
+  który uruchamia `WinLock2FA.exe lock` przy każdym Twoim zalogowaniu.
+  To czysto per-user klucz (`HKCU`), więc instalacja **nigdy nie wymaga
+  podniesienia UAC ani konta administratora** — działa identycznie na
+  koncie standardowym i administratorskim, i niczego nie zmienia w
+  ustawieniach systemowych. (Wcześniej używane było zadanie w
+  Harmonogramie zadań Windows przez `schtasks`, ale to podejście
+  zawodziło z błędem "Odmowa dostępu" na kontach administratorskich
+  uruchomionych bez podniesienia — UAC nakłada na taki token jawny zakaz
+  dla grupy Administratorzy, o który rozbija się ACL Harmonogramu zadań
+  nawet przy `/rl limited`.)
 - **Blokada (`lock`)** — pełnoekranowe okno bez ramki, zawsze na wierzchu,
   bez paska zadań, z losowym pytaniem z Twojej puli. Pole odpowiedzi jest
   zamaskowane (jak pole hasła). Blokuje Win, Alt+Tab, Alt+F4 i Ctrl+Esc,
@@ -42,20 +49,26 @@ x64 bez instalowania czegokolwiek dodatkowego.
 
 - **Wygaśnięcie (jednorazowe)** — program ma wpisany na stałe termin
   ważności: **26.06.2027**. Od tego dnia, przy każdym logowaniu, zamiast
-  pokazać pytanie program po cichu usuwa własne zadanie z Harmonogramu
-  zadań i kończy działanie (nic nie blokuje). To sprawdzane jest jeszcze
-  raz, niezależnie, wewnątrz samego ekranu blokady — więc gdyby usuwanie
-  zadania z jakiegoś powodu się nie udało i ekran mimo wszystko się pojawił,
+  pokazać pytanie program po cichu usuwa własny wpis autostartu z rejestru
+  i kończy działanie (nic nie blokuje). To sprawdzane jest jeszcze raz,
+  niezależnie, wewnątrz samego ekranu blokady — więc gdyby usuwanie wpisu
+  z jakiegoś powodu się nie udało i ekran mimo wszystko się pojawił,
   zamiast pytania zobaczysz duży, wyraźny komunikat z instrukcją, co zrobić
   (przycisk "Zamknij" bez podawania odpowiedzi ani kodu, plus wskazówka jak
-  ręcznie usunąć zadanie z Harmonogramu zadań). Zobacz `ExpiryPolicy.cs` —
-  jeśli chcesz używać programu dłużej, trzeba tam ręcznie zmienić datę i
-  zbudować `.exe` na nowo.
+  ręcznie usunąć wpis z rejestru). Zobacz `ExpiryPolicy.cs` — jeśli chcesz
+  używać programu dłużej, trzeba tam ręcznie zmienić datę i zbudować `.exe`
+  na nowo.
 - **Wyłącznik w ustawieniach** — w menu głównym, pozycja **"5. Wyłącz/Włącz
-  ochronę"**, pozwala wstrzymać blokadę bez odinstalowywania zadania z
-  Harmonogramu zadań. Wyłączenie wymaga tego samego kodu awaryjnego co
+  ochronę"**, pozwala wstrzymać blokadę bez odinstalowywania wpisu
+  autostartu. Wyłączenie wymaga tego samego kodu awaryjnego co
   "Odinstaluj" (zgodnie z zasadą, że wyłączyć ochronę można tylko tym
   kodem); włączenie z powrotem nie wymaga kodu.
+- **Wyłącznik auto-odinstalowania** — pozycja **"6. Wyłącz/Włącz
+  auto-odinstalowanie"** pozwala wyłączyć mechanizm jednorazowego
+  wygaśnięcia opisany wyżej, żeby blokada działała dalej także po
+  26.06.2027 (bez ponownego budowania `.exe`). To *nie* jest osłabienie
+  ochrony (przeciwnie — wydłuża jej działanie), więc ta przełącznik nie
+  wymaga kodu awaryjnego w żadną stronę.
 
 ## Ważne ograniczenia bezpieczeństwa — przeczytaj przed użyciem
 
@@ -108,7 +121,9 @@ Gotowy plik pojawi się w `dist\WinLock2FA.exe`.
 5. **"Odinstaluj"** — poprosi o kod awaryjny (`0000`), a po jego podaniu
    usuwa zaplanowane zadanie i blokada przestaje się uruchamiać.
 6. **"Wyłącz/Włącz ochronę"** — szybkie wstrzymanie blokady bez usuwania
-   zadania z Harmonogramu (wyłączenie też wymaga kodu `0000`).
+   wpisu autostartu (wyłączenie też wymaga kodu `0000`).
+7. **"Wyłącz/Włącz auto-odinstalowanie"** — wyłącza jednorazowe wygaśnięcie
+   z 26.06.2027, żeby blokada działała dalej po tej dacie (bez kodu).
 
 Dane pytań/odpowiedzi trzymane są w
 `%APPDATA%\WinLock2FA\questions.dat`.

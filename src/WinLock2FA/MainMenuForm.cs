@@ -8,12 +8,13 @@ public class MainMenuForm : Form
 {
     private readonly Label _statusLabel;
     private readonly Button _toggleButton;
+    private readonly Button _expiryToggleButton;
 
     public MainMenuForm()
     {
         Text = "WinLock2FA";
         Width = 420;
-        Height = 400;
+        Height = 440;
         StartPosition = FormStartPosition.CenterScreen;
         MinimizeBox = false;
         MaximizeBox = false;
@@ -44,12 +45,15 @@ public class MainMenuForm : Form
         _toggleButton = new Button { Text = "5. Ochrona: ...", Left = 60, Top = 236, Width = 280, Height = 36 };
         _toggleButton.Click += (_, _) => DoToggleProtection();
 
+        _expiryToggleButton = new Button { Text = "6. Wygaśnięcie: ...", Left = 60, Top = 280, Width = 280, Height = 36 };
+        _expiryToggleButton.Click += (_, _) => DoToggleExpiryAutoUninstall();
+
         _statusLabel = new Label
         {
             Left = 20,
-            Top = 284,
+            Top = 324,
             Width = 380,
-            Height = 70,
+            Height = 90,
             ForeColor = Color.DimGray,
             Text = StatusText(),
         };
@@ -60,25 +64,37 @@ public class MainMenuForm : Form
         Controls.Add(uninstallButton);
         Controls.Add(testButton);
         Controls.Add(_toggleButton);
+        Controls.Add(_expiryToggleButton);
         Controls.Add(_statusLabel);
 
         RefreshToggleButton();
+        RefreshExpiryToggleButton();
     }
 
     private string StatusText()
     {
         var count = QuestionStore.Load().Count;
         var installed = Installer.IsInstalled();
-        var enabled = ProtectionSettings.Load().Enabled;
+        var settings = ProtectionSettings.Load();
         return $"Zapisanych pytań: {count}\n" +
                $"Zainstalowane przy logowaniu: {(installed ? "TAK" : "nie")}\n" +
-               $"Ochrona: {(enabled ? "WŁĄCZONA" : "wyłączona")}";
+               $"Ochrona: {(settings.Enabled ? "WŁĄCZONA" : "wyłączona")}\n" +
+               $"Auto-odinstalowanie {ExpiryPolicy.ExpiryDate:dd.MM.yyyy}: " +
+               $"{(settings.ExpiryAutoUninstallEnabled ? "WŁĄCZONE" : "wyłączone")}";
     }
 
     private void RefreshToggleButton()
     {
         var enabled = ProtectionSettings.Load().Enabled;
         _toggleButton.Text = enabled ? "5. Wyłącz ochronę" : "5. Włącz ochronę";
+    }
+
+    private void RefreshExpiryToggleButton()
+    {
+        var enabled = ProtectionSettings.Load().ExpiryAutoUninstallEnabled;
+        _expiryToggleButton.Text = enabled
+            ? "6. Wyłącz auto-odinstalowanie"
+            : "6. Włącz auto-odinstalowanie";
     }
 
     private void DoInstall()
@@ -143,6 +159,28 @@ public class MainMenuForm : Form
         }
 
         RefreshToggleButton();
+        _statusLabel.Text = StatusText();
+    }
+
+    private void DoToggleExpiryAutoUninstall()
+    {
+        // No debug code required either direction: turning this off keeps
+        // the lock active past the expiry date (more protection, not less),
+        // and turning it back on restores the original one-time behavior.
+        var settings = ProtectionSettings.Load();
+        settings.ExpiryAutoUninstallEnabled = !settings.ExpiryAutoUninstallEnabled;
+        settings.Save();
+
+        MessageBox.Show(
+            this,
+            settings.ExpiryAutoUninstallEnabled
+                ? $"Auto-odinstalowanie {ExpiryPolicy.ExpiryDate:dd.MM.yyyy} włączone."
+                : $"Auto-odinstalowanie {ExpiryPolicy.ExpiryDate:dd.MM.yyyy} wyłączone. Blokada będzie działać dalej po tej dacie.",
+            "Sukces",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
+
+        RefreshExpiryToggleButton();
         _statusLabel.Text = StatusText();
     }
 

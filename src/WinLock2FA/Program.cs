@@ -35,9 +35,11 @@ internal static class Program
 
     private static void RunLock()
     {
-        if (ExpiryPolicy.HasExpired)
+        var settings = ProtectionSettings.Load();
+
+        if (ExpiryPolicy.HasExpired && settings.ExpiryAutoUninstallEnabled)
         {
-            // Past the app's expiry date: remove the scheduled task so this
+            // Past the app's expiry date: remove the autorun entry so this
             // never triggers again, and fail open for this run. Best effort -
             // if it fails, LockForm itself checks the same expiry date and
             // shows a big explanatory notice instead of a real question.
@@ -45,7 +47,7 @@ internal static class Program
             return;
         }
 
-        if (!ProtectionSettings.Load().Enabled)
+        if (!settings.Enabled)
         {
             // Paused from the main menu's settings toggle.
             return;
