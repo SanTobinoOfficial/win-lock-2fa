@@ -40,6 +40,23 @@ x64 bez instalowania czegokolwiek dodatkowego.
   więcej niż wygodą deweloperską, zmień go na coś swojego przed zbudowaniem
   `.exe`.
 
+- **Wygaśnięcie (jednorazowe)** — program ma wpisany na stałe termin
+  ważności: **26.06.2027**. Od tego dnia, przy każdym logowaniu, zamiast
+  pokazać pytanie program po cichu usuwa własne zadanie z Harmonogramu
+  zadań i kończy działanie (nic nie blokuje). To sprawdzane jest jeszcze
+  raz, niezależnie, wewnątrz samego ekranu blokady — więc gdyby usuwanie
+  zadania z jakiegoś powodu się nie udało i ekran mimo wszystko się pojawił,
+  zamiast pytania zobaczysz duży, wyraźny komunikat z instrukcją, co zrobić
+  (przycisk "Zamknij" bez podawania odpowiedzi ani kodu, plus wskazówka jak
+  ręcznie usunąć zadanie z Harmonogramu zadań). Zobacz `ExpiryPolicy.cs` —
+  jeśli chcesz używać programu dłużej, trzeba tam ręcznie zmienić datę i
+  zbudować `.exe` na nowo.
+- **Wyłącznik w ustawieniach** — w menu głównym, pozycja **"5. Wyłącz/Włącz
+  ochronę"**, pozwala wstrzymać blokadę bez odinstalowywania zadania z
+  Harmonogramu zadań. Wyłączenie wymaga tego samego kodu awaryjnego co
+  "Odinstaluj" (zgodnie z zasadą, że wyłączyć ochronę można tylko tym
+  kodem); włączenie z powrotem nie wymaga kodu.
+
 ## Ważne ograniczenia bezpieczeństwa — przeczytaj przed użyciem
 
 To **nie** jest zamiennik ekranu logowania Windows ani prawdziwa bariera
@@ -90,6 +107,8 @@ Gotowy plik pojawi się w `dist\WinLock2FA.exe`.
 4. **"Zainstaluj"** — od teraz blokada pojawi się po każdym zalogowaniu.
 5. **"Odinstaluj"** — poprosi o kod awaryjny (`0000`), a po jego podaniu
    usuwa zaplanowane zadanie i blokada przestaje się uruchamiać.
+6. **"Wyłącz/Włącz ochronę"** — szybkie wstrzymanie blokady bez usuwania
+   zadania z Harmonogramu (wyłączenie też wymaga kodu `0000`).
 
 Dane pytań/odpowiedzi trzymane są w
 `%APPDATA%\WinLock2FA\questions.dat`.

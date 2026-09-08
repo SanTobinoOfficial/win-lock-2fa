@@ -7,12 +7,13 @@ namespace WinLock2FA;
 public class MainMenuForm : Form
 {
     private readonly Label _statusLabel;
+    private readonly Button _toggleButton;
 
     public MainMenuForm()
     {
         Text = "WinLock2FA";
         Width = 420;
-        Height = 320;
+        Height = 400;
         StartPosition = FormStartPosition.CenterScreen;
         MinimizeBox = false;
         MaximizeBox = false;
@@ -40,12 +41,15 @@ public class MainMenuForm : Form
         var testButton = new Button { Text = "4. Testuj blokadę teraz", Left = 60, Top = 192, Width = 280, Height = 36 };
         testButton.Click += (_, _) => DoTest();
 
+        _toggleButton = new Button { Text = "5. Ochrona: ...", Left = 60, Top = 236, Width = 280, Height = 36 };
+        _toggleButton.Click += (_, _) => DoToggleProtection();
+
         _statusLabel = new Label
         {
             Left = 20,
-            Top = 240,
+            Top = 284,
             Width = 380,
-            Height = 50,
+            Height = 70,
             ForeColor = Color.DimGray,
             Text = StatusText(),
         };
@@ -55,14 +59,26 @@ public class MainMenuForm : Form
         Controls.Add(installButton);
         Controls.Add(uninstallButton);
         Controls.Add(testButton);
+        Controls.Add(_toggleButton);
         Controls.Add(_statusLabel);
+
+        RefreshToggleButton();
     }
 
     private string StatusText()
     {
         var count = QuestionStore.Load().Count;
         var installed = Installer.IsInstalled();
-        return $"Zapisanych pytań: {count}\nZainstalowane przy logowaniu: {(installed ? "TAK" : "nie")}";
+        var enabled = ProtectionSettings.Load().Enabled;
+        return $"Zapisanych pytań: {count}\n" +
+               $"Zainstalowane przy logowaniu: {(installed ? "TAK" : "nie")}\n" +
+               $"Ochrona: {(enabled ? "WŁĄCZONA" : "wyłączona")}";
+    }
+
+    private void RefreshToggleButton()
+    {
+        var enabled = ProtectionSettings.Load().Enabled;
+        _toggleButton.Text = enabled ? "5. Wyłącz ochronę" : "5. Włącz ochronę";
     }
 
     private void DoInstall()
@@ -92,6 +108,41 @@ public class MainMenuForm : Form
 
         var (ok, message) = Installer.Uninstall();
         MessageBox.Show(this, message, ok ? "Sukces" : "Błąd", MessageBoxButtons.OK, ok ? MessageBoxIcon.Information : MessageBoxIcon.Error);
+        _statusLabel.Text = StatusText();
+    }
+
+    private void DoToggleProtection()
+    {
+        var settings = ProtectionSettings.Load();
+
+        if (settings.Enabled)
+        {
+            // Turning protection off requires the same debug code as
+            // Uninstall - it's still "disabling protection", just without
+            // touching the scheduled task.
+            using var codeDialog = new CodePromptDialog("Podaj kod awaryjny, aby wyłączyć ochronę:");
+            if (codeDialog.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            if (codeDialog.EnteredCode != DebugCode.Value)
+            {
+                MessageBox.Show(this, "Nieprawidłowy kod.", "Błąd", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            settings.Enabled = false;
+            settings.Save();
+            MessageBox.Show(this, "Ochrona wyłączona. Blokada nie pojawi się przy kolejnym logowaniu.", "Sukces", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        else
+        {
+            // Turning it back on doesn't need a code - only disabling does.
+            settings.Enabled = true;
+            settings.Save();
+            MessageBox.Show(this, "Ochrona włączona.", "Sukces", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        RefreshToggleButton();
         _statusLabel.Text = StatusText();
     }
 

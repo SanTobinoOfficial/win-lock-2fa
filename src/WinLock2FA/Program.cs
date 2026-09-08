@@ -35,6 +35,22 @@ internal static class Program
 
     private static void RunLock()
     {
+        if (ExpiryPolicy.HasExpired)
+        {
+            // Past the app's expiry date: remove the scheduled task so this
+            // never triggers again, and fail open for this run. Best effort -
+            // if it fails, LockForm itself checks the same expiry date and
+            // shows a big explanatory notice instead of a real question.
+            Installer.Uninstall();
+            return;
+        }
+
+        if (!ProtectionSettings.Load().Enabled)
+        {
+            // Paused from the main menu's settings toggle.
+            return;
+        }
+
         var entries = QuestionStore.Load();
         if (entries.Count == 0)
         {

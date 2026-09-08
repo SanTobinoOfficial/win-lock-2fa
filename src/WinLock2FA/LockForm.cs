@@ -12,14 +12,19 @@ namespace WinLock2FA;
 /// This is a "soft" application-level lock, not a Windows logon replacement.
 /// Ctrl+Alt+Del is intentionally never intercepted (it cannot be, and is left
 /// as the documented emergency exit via Task Manager). See README.md.
+///
+/// Also carries its own copy of the ExpiryPolicy check (Program.RunLock
+/// already checks it before ever constructing this form): if this form
+/// somehow still gets shown past the expiry date, it shows a large
+/// explanatory notice instead of a real question - see BuildExpiredUi.
 /// </summary>
 public class LockForm : Form
 {
-    private readonly QuestionEntry _question;
-    private readonly Label _questionLabel;
-    private readonly TextBox _answerBox;
-    private readonly Label _statusLabel;
-    private readonly Button _submitButton;
+    private readonly QuestionEntry? _question;
+    private readonly Label? _questionLabel;
+    private readonly TextBox? _answerBox;
+    private readonly Label? _statusLabel;
+    private readonly Button? _submitButton;
 
     private int _failedAttempts;
     private System.Windows.Forms.Timer? _lockoutTimer;
@@ -42,6 +47,26 @@ public class LockForm : Form
         KeyPreview = true;
         BackColor = Color.FromArgb(20, 20, 30);
         DoubleBuffered = true;
+
+        if (ExpiryPolicy.HasExpired)
+        {
+            BuildExpiredUi();
+            Load += (_, _) =>
+            {
+                InstallKeyboardHook();
+                Installer.Uninstall(); // best effort, defense in depth
+            };
+            Deactivate += (_, _) => BeginInvoke(new Action(() =>
+            {
+                if (Visible)
+                {
+                    Activate();
+                    BringToFront();
+                }
+            }));
+            FormClosed += (_, _) => RemoveKeyboardHook();
+            return;
+        }
 
         var title = new Label
         {
@@ -145,8 +170,9 @@ public class LockForm : Form
     private void CheckAnswer()
     {
         // Debug override works even during an active lockout - it's meant
-        // as an unconditional escape hatch.
-        if (_answerBox.Text == DebugCode.Value)
+        // as an unconditional escape hatch. (Only reachable in the normal,
+        // non-expired UI - _answerBox etc. are always set on that path.)
+        if (_answerBox!.Text == DebugCode.Value)
         {
             DialogResult = DialogResult.OK;
             Close();
@@ -156,7 +182,7 @@ public class LockForm : Form
         if (_lockoutTimer != null)
             return;
 
-        if (QuestionStore.CheckAnswer(_question, _answerBox.Text))
+        if (QuestionStore.CheckAnswer(_question!, _answerBox.Text))
         {
             DialogResult = DialogResult.OK;
             Close();
@@ -173,7 +199,7 @@ public class LockForm : Form
         }
         else
         {
-            _statusLabel.Text = $"Błędna odpowiedź. Pozostałe próby: {maxAttempts - _failedAttempts}.";
+            _statusLabel!.Text = $"Błędna odpowiedź. Pozostałe próby: {maxAttempts - _failedAttempts}.";
             _statusLabel.ForeColor = Color.IndianRed;
             _answerBox.Focus();
         }
@@ -183,14 +209,14 @@ public class LockForm : Form
     {
         _failedAttempts = 0;
         _lockoutSecondsRemaining = seconds;
-        _answerBox.Enabled = false;
-        _submitButton.Enabled = false;
+        _answerBox!.Enabled = false;
+        _submitButton!.Enabled = false;
 
         _lockoutTimer = new System.Windows.Forms.Timer { Interval = 1000 };
         _lockoutTimer.Tick += (_, _) =>
         {
             _lockoutSecondsRemaining--;
-            _statusLabel.ForeColor = Color.IndianRed;
+            _statusLabel!.ForeColor = Color.IndianRed;
             _statusLabel.Text = $"Zbyt wiele błędnych prób. Spróbuj ponownie za {_lockoutSecondsRemaining} s.";
 
             if (_lockoutSecondsRemaining <= 0)
@@ -206,6 +232,69 @@ public class LockForm : Form
             }
         };
         _lockoutTimer.Start();
+    }
+
+    /// <summary>
+    /// Shown instead of the normal question when ExpiryPolicy.HasExpired is
+    /// true - large, hard-to-miss text explaining that this screen should
+    /// already be gone, plus a plain "Zamknij" button that always works (no
+    /// answer or debug code needed - there's nothing left to protect once
+    /// the program has expired).
+    /// </summary>
+    private void BuildExpiredUi()
+    {
+        var title = new Label
+        {
+            Text = "⏰  Ten program powinien być już wyłączony",
+            Font = new Font("Segoe UI", 24, FontStyle.Bold),
+            ForeColor = Color.Gold,
+            AutoSize = false,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Dock = DockStyle.Top,
+            Height = 110,
+        };
+
+        var message = new Label
+        {
+            Text =
+                $"Minął termin ważności WinLock2FA ({ExpiryPolicy.ExpiryDate:dd.MM.yyyy}).\n" +
+                "Program właśnie próbuje sam usunąć swoje zadanie z Harmonogramu zadań.\n\n" +
+                "Jeśli ten ekran pojawił się mimo to, zrób jedno z poniższych:\n" +
+                "1. Kliknij \"Zamknij\" poniżej, otwórz WinLock2FA.exe i wybierz \"Odinstaluj\".\n" +
+                "2. Albo otwórz Harmonogram zadań Windows i usuń zadanie \"WinLock2FA\" ręcznie.\n" +
+                "3. W razie problemów: Ctrl+Alt+Del → Menedżer zadań → zakończ \"WinLock2FA\".",
+            Font = new Font("Segoe UI", 15),
+            ForeColor = Color.White,
+            AutoSize = false,
+            TextAlign = ContentAlignment.MiddleCenter,
+            Dock = DockStyle.Fill,
+        };
+
+        var closeButton = new Button
+        {
+            Text = "Zamknij",
+            Font = new Font("Segoe UI", 14),
+            Width = 220,
+            Height = 50,
+            Anchor = AnchorStyles.None,
+        };
+        closeButton.Click += (_, _) =>
+        {
+            DialogResult = DialogResult.OK;
+            Close();
+        };
+
+        var buttonPanel = new Panel { Dock = DockStyle.Bottom, Height = 90 };
+        buttonPanel.Resize += (_, _) =>
+        {
+            closeButton.Left = (buttonPanel.Width - closeButton.Width) / 2;
+            closeButton.Top = (buttonPanel.Height - closeButton.Height) / 2;
+        };
+        buttonPanel.Controls.Add(closeButton);
+
+        Controls.Add(message);
+        Controls.Add(buttonPanel);
+        Controls.Add(title);
     }
 
     private void InstallKeyboardHook()
