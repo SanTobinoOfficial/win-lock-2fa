@@ -23,17 +23,22 @@ x64 bez instalowania czegokolwiek dodatkowego.
   uprawnieniami — instalacja nie wymaga uruchamiania niczego jako
   administrator i niczego nie zmienia w ustawieniach systemowych.
 - **Blokada (`lock`)** — pełnoekranowe okno bez ramki, zawsze na wierzchu,
-  bez paska zadań, z losowym pytaniem z Twojej puli. Blokuje Win, Alt+Tab,
-  Alt+F4 i Ctrl+Esc, żeby zniechęcić do przełączenia się gdzie indziej. Po
-  5 błędnych odpowiedziach wprowadzana jest 30-sekundowa blokada przed
-  kolejną próbą.
+  bez paska zadań, z losowym pytaniem z Twojej puli. Pole odpowiedzi jest
+  zamaskowane (jak pole hasła). Blokuje Win, Alt+Tab, Alt+F4 i Ctrl+Esc,
+  żeby zniechęcić do przełączenia się gdzie indziej, i nie wyświetla żadnej
+  podpowiedzi o Ctrl+Alt+Del ani Menedżerze zadań na ekranie. Po 5 błędnych
+  odpowiedziach wprowadzana jest 30-sekundowa blokada przed kolejną próbą.
 - **Kod awaryjny (debug)** — wpisanie `0000` w polu odpowiedzi (nawet w
   trakcie 30-sekundowej blokady) natychmiast zamyka okno blokady, bez
-  podawania prawdziwej odpowiedzi. To wygodne wyjście na czas testów, **nie**
-  jest to sekret — kod jest jawnie w kodzie źródłowym w tym publicznym repo
-  (`LockForm.cs`, stała `DebugOverrideCode`). Jeśli chcesz się na nim opierać
-  jako na czymś więcej niż wygodą deweloperską, zmień go na coś swojego przed
-  zbudowaniem `.exe`.
+  podawania prawdziwej odpowiedzi. Ten sam kod jest też wymagany w menu
+  głównym przy akcji **"Odinstaluj"**, żeby całkowicie wyłączyć ochronę —
+  bez niego nie da się wyłączyć programu z poziomu jego własnego interfejsu
+  (poza usunięciem zadania ręcznie z uprawnieniami administratora, patrz
+  niżej). To wygodne wyjście na czas testów, **nie** jest to sekret — kod
+  jest jawnie w kodzie źródłowym w tym publicznym repo (`DebugCode.cs`,
+  stała `DebugCode.Value`). Jeśli chcesz się na nim opierać jako na czymś
+  więcej niż wygodą deweloperską, zmień go na coś swojego przed zbudowaniem
+  `.exe`.
 
 ## Ważne ograniczenia bezpieczeństwa — przeczytaj przed użyciem
 
@@ -43,11 +48,18 @@ poziomie aplikacji. Świadomie **nie** ingeruje w:
 
 - **Ctrl+Alt+Del** — to systemowa "Secure Attention Sequence" obsługiwana
   bezpośrednio przez jądro Windows/Winlogon. Żadna aplikacja w trybie
-  użytkownika nie jest w stanie jej przechwycić ani zablokować. Jest to
-  celowo pozostawione jako **awaryjne wyjście**: w razie problemów
-  `Ctrl+Alt+Del` → Menedżer zadań → zakończ zadanie `WinLock2FA`.
-- Politykę systemową, rejestr Winlogon/Shell ani Menedżera zadań — appka
-  nigdy tego nie modyfikuje.
+  użytkownika nie jest w stanie jej przechwycić ani zablokować. To celowo
+  pozostawione, zawsze działające awaryjne wyjście — `Ctrl+Alt+Del` →
+  Menedżer zadań → zakończ zadanie `WinLock2FA` — nawet jeśli ekran
+  blokady nie wyświetla już o tym podpowiedzi.
+- **Menedżer zadań pozostaje w pełni dostępny.** Świadomie **nie**
+  implementuję jego wyłączania (np. przez politykę rejestru
+  `DisableTaskMgr`) ani żadnej innej modyfikacji ustawień systemowych —
+  to wykracza poza to, co ta appka powinna robić: zmiana takich ustawień
+  bezpieczeństwa systemu Windows niesie realne ryzyko, że w razie błędu w
+  aplikacji zablokujesz się na własnym, żywym komputerze bez żadnej drogi
+  odzyskania dostępu (poza Trybem awaryjnym i kontem administratora). Appka
+  nigdy nie modyfikuje polityki systemowej ani rejestru Winlogon/Shell.
 - Tryb awaryjny (Safe Mode) — ktoś z fizycznym dostępem do komputera i
   kontem administratora zawsze może wyłączyć zaplanowane zadanie albo
   odinstalować program.
@@ -76,8 +88,8 @@ Gotowy plik pojawi się w `dist\WinLock2FA.exe`.
    włączysz blokadę na stałe (aplikacja przypomni o Ctrl+Alt+Del przed
    testem).
 4. **"Zainstaluj"** — od teraz blokada pojawi się po każdym zalogowaniu.
-5. **"Odinstaluj"** — usuwa zaplanowane zadanie, blokada przestaje się
-   uruchamiać.
+5. **"Odinstaluj"** — poprosi o kod awaryjny (`0000`), a po jego podaniu
+   usuwa zaplanowane zadanie i blokada przestaje się uruchamiać.
 
 Dane pytań/odpowiedzi trzymane są w
 `%APPDATA%\WinLock2FA\questions.dat`.

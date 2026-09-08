@@ -80,6 +80,16 @@ public class MainMenuForm : Form
 
     private void DoUninstall()
     {
+        using var codeDialog = new CodePromptDialog("Podaj kod awaryjny, aby wyłączyć ochronę:");
+        if (codeDialog.ShowDialog(this) != DialogResult.OK)
+            return;
+
+        if (codeDialog.EnteredCode != DebugCode.Value)
+        {
+            MessageBox.Show(this, "Nieprawidłowy kod.", "Błąd", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
         var (ok, message) = Installer.Uninstall();
         MessageBox.Show(this, message, ok ? "Sukces" : "Błąd", MessageBoxButtons.OK, ok ? MessageBoxIcon.Information : MessageBoxIcon.Error);
         _statusLabel.Text = StatusText();
