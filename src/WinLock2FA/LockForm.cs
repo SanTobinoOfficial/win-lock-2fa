@@ -15,6 +15,17 @@ namespace WinLock2FA;
 /// </summary>
 public class LockForm : Form
 {
+    /// <summary>
+    /// Hardcoded emergency/debug override: typing this into the answer box
+    /// force-closes the lock regardless of the actual question or an active
+    /// lockout. This is NOT a secret - it's committed in a public repo, so
+    /// it gives zero protection against anyone who can read the source.
+    /// It exists purely as a convenience escape hatch alongside Ctrl+Alt+Del
+    /// for the person building/testing this on their own machine. Change or
+    /// remove it before relying on this app for anything more than that.
+    /// </summary>
+    private const string DebugOverrideCode = "0000";
+
     private readonly QuestionEntry _question;
     private readonly Label _questionLabel;
     private readonly TextBox _answerBox;
@@ -143,6 +154,14 @@ public class LockForm : Form
 
     private void CheckAnswer()
     {
+        // Debug override works even during an active lockout - it's meant
+        // as an unconditional escape hatch.
+        if (_answerBox.Text == DebugOverrideCode)
+        {
+            Close();
+            return;
+        }
+
         if (_lockoutTimer != null)
             return;
 

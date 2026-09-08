@@ -27,6 +27,13 @@ x64 bez instalowania czegokolwiek dodatkowego.
   Alt+F4 i Ctrl+Esc, żeby zniechęcić do przełączenia się gdzie indziej. Po
   5 błędnych odpowiedziach wprowadzana jest 30-sekundowa blokada przed
   kolejną próbą.
+- **Kod awaryjny (debug)** — wpisanie `0000` w polu odpowiedzi (nawet w
+  trakcie 30-sekundowej blokady) natychmiast zamyka okno blokady, bez
+  podawania prawdziwej odpowiedzi. To wygodne wyjście na czas testów, **nie**
+  jest to sekret — kod jest jawnie w kodzie źródłowym w tym publicznym repo
+  (`LockForm.cs`, stała `DebugOverrideCode`). Jeśli chcesz się na nim opierać
+  jako na czymś więcej niż wygodą deweloperską, zmień go na coś swojego przed
+  zbudowaniem `.exe`.
 
 ## Ważne ograniczenia bezpieczeństwa — przeczytaj przed użyciem
 
